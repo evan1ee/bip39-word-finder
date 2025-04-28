@@ -7,7 +7,7 @@ import "./globals.css";
 
 
 export const metadata: Metadata = {
-  title: "Points convert to Bip39 mnemonic",
+  title: "BIP39 Word Finder",
   description: "Points convert to Bip39 mnemonic",
 };
 
