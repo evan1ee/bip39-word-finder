@@ -100,9 +100,7 @@ export default function Home() {
           <p className="text-white/80 mt-2">Select binary values to find corresponding BIP39 mnemonic words</p>
         </div>
         
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Select Binary Value</h2>
-          
+        <div className="p-6">          
           <div className="flex flex-wrap gap-4 items-center justify-center mb-8 bg-gray-50 p-6 rounded-xl">
             {binaryValues.map((value, index) => (
               <div key={index} className="flex flex-col items-center">
