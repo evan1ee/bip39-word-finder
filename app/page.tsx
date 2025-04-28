@@ -97,7 +97,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex-grow">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
           <h1 className="text-2xl font-bold text-white">BIP39 Word Finder</h1>
-          <p className="text-white/80 mt-2">Select binary values to find corresponding BIP39 mnemonic words</p>
+          <p className="text-white/80 mt-2">The BIP39 mnemonic list contains 2048 words, each corresponding to a value from 0 to 2047. These values can be represented using 11 checkboxes for binary selection to determine the matching BIP39 word.</p>
         </div>
         
         <div className="p-6">          
