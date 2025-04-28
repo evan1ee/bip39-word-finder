@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Github } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 
 import chinese_simplified_wordlist from "@/lib/wordlist/chinese_simplified";
@@ -88,18 +88,20 @@ export default function Home() {
     { name: "Spanish", list: spanish_wordlist, id: "spanish" }
   ];
 
+  const githubRepoUrl = "https://github.com/evan1ee/bip39-word-finder";
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex flex-col">
       <Toaster position="top-right" />
       
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex-grow">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
           <h1 className="text-2xl font-bold text-white">BIP39 Word Finder</h1>
           <p className="text-white/80 mt-2">Select binary values to find corresponding BIP39 mnemonic words</p>
         </div>
         
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Select Binary Value </h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Select Binary Value</h2>
           
           <div className="flex flex-wrap gap-4 items-center justify-center mb-8 bg-gray-50 p-6 rounded-xl">
             {binaryValues.map((value, index) => (
@@ -160,6 +162,19 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Footer with GitHub link */}
+      <footer className="mt-12 text-center py-6 text-gray-500 text-sm">
+        <a
+          href={githubRepoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 text-gray-500 hover:text-blue-600 transition-colors"
+        >
+          <Github className="h-4 w-4" />
+          View on GitHub
+        </a>
+      </footer>
     </div>
   );
 }
