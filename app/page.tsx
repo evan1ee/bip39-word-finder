@@ -37,7 +37,7 @@ export default function Home() {
   const [copiedWord, setCopiedWord] = useState<string | null>(null);
 
   // Values in reverse order (1024 to 1)
-  const binaryValues: number[] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1];
+  const binaryValues: number[] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1,1];
 
   // Calculate the sum based on selected checkboxes
   const calculateSum = (): number => {
