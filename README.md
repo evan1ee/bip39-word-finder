@@ -42,7 +42,7 @@ To run this project locally, follow these steps:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/bip39-word-finder.git
+   git clone https://github.com/evan1ee/bip39-word-finder.git
    cd bip39-word-finder
    ```
 
