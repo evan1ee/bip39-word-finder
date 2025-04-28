@@ -37,7 +37,7 @@ export default function Home() {
   const [copiedWord, setCopiedWord] = useState<string | null>(null);
 
   // Values in reverse order (1024 to 1)
-  const binaryValues: number[] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1,1];
+  const binaryValues: number[] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1];
 
   // Calculate the sum based on selected checkboxes
   const calculateSum = (): number => {
@@ -119,10 +119,10 @@ export default function Home() {
 
           <div className="mt-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              Result: <span className="text-blue-600">{hasSelection ? sum : "None"}</span>
+              Result: <span className="text-blue-600">{hasSelection ? sum : "0"}</span>
             </h2>
             
-            {hasSelection ? (
+            
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {wordlistMap.map((wordlist) => (
                   <div 
@@ -132,7 +132,7 @@ export default function Home() {
                     <div className="flex justify-between items-center">
                       <h3 className="text-sm font-medium text-gray-500">{wordlist.name}</h3>
                       <button
-                        onClick={() => copyToClipboard(wordlist.list[sum-1], wordlist.id)}
+                        onClick={() => copyToClipboard(wordlist.list[sum], wordlist.id)}
                         className="text-gray-400 hover:text-gray-600 focus:outline-none"
                         aria-label={`Copy ${wordlist.name} word`}
                       >
@@ -145,18 +145,14 @@ export default function Home() {
                     </div>
                     <p 
                       className="text-lg font-medium mt-1 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => copyToClipboard(wordlist.list[sum-1], wordlist.id)}
+                      onClick={() => copyToClipboard(wordlist.list[sum], wordlist.id)}
                     >
-                      {wordlist.list[sum-1]}
+                      {wordlist.list[sum]}
                     </p>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center p-10 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-gray-500">Select at least one checkbox to see the corresponding words</p>
-              </div>
-            )}
+           
           </div>
         </div>
       </div>
