@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Toaster } from 'react-hot-toast';
 
 
 
@@ -19,7 +18,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-        <Toaster position="top-right" />
 
       </body>
     </html>

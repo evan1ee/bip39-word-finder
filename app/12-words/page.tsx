@@ -1,266 +1,303 @@
 'use client'
 
-import React, { useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Copy, Github, RefreshCw, Info } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Copy, Github, RefreshCw, Binary, Plus, Minus } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 
-import chinese_simplified_wordlist from "@/lib/wordlist/chinese_simplified";
-import chinese_traditional_wordlist from "@/lib/wordlist/chinese_traditional";
-import czech_wordlist from "@/lib/wordlist/czech";
-import english_wordlist from "@/lib/wordlist/english";
-import french_wordlist from "@/lib/wordlist/french";
-import italian_wordlist from "@/lib/wordlist/italian";
-import japanese_wordlist from "@/lib/wordlist/japanese";
-import korean_wordlist from "@/lib/wordlist/korean";
-import portuguese_wordlist from "@/lib/wordlist/portuguese";
-import spanish_wordlist from "@/lib/wordlist/spanish";
-
-interface SelectedValues {
-  [key: string]: boolean;
-}
+import { getWordsFromIndex,  } from "@/lib/wordlist";
+import { BinaryInput } from "@/components/binaryButton";
 
 export default function Home() {
-  // Initialize state for 12 lines of checkboxes
-  const initialSelectedValues: SelectedValues = {};
-  for (let line = 0; line < 12; line++) {
-    for (let bit = 0; bit < 11; bit++) {
-      initialSelectedValues[`${line}-${bit}`] = false;
-    }
-  }
-
-  const [selectedValues, setSelectedValues] = useState<SelectedValues>(initialSelectedValues);
-  const [copiedPhrase, setCopiedPhrase] = useState<string | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  // Values in reverse order (1024 to 1)
-  const binaryValues: number[] = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1];
-
-  // Calculate the sum for a specific line based on selected checkboxes
-  const calculateLineSum = (line: number): number => {
-    let sum = 0;
-    
-    for (let bit = 0; bit < 11; bit++) {
-      if (selectedValues[`${line}-${bit}`]) {
-        sum += binaryValues[bit];
-      }
-    }
-    
-    return sum;
-  };
-
-  // Handle checkbox changes
-  const handleCheckboxChange = (line: number, bit: number): void => {
-    const key = `${line}-${bit}`;
-    setSelectedValues({
-      ...selectedValues,
-      [key]: !selectedValues[key],
-    });
-  };
-
-  // Reset all checkboxes
-  const handleReset = (): void => {
-    setSelectedValues(initialSelectedValues);
-    toast.success("All checkboxes have been reset");
-  };
-
-  // Generate array of sums for all 12 lines
-  const lineSums = Array.from({ length: 12 }, (_, i) => calculateLineSum(i));
-  
-  // Check if there are any selections
-  const hasAnySelection = lineSums.some(sum => sum > 0);
-
-  const wordlistMap = [
-    { name: "English", list: english_wordlist, id: "english" },
-    { name: "Chinese (Simplified)", list: chinese_simplified_wordlist, id: "chinese-simplified" },
-    { name: "Chinese (Traditional)", list: chinese_traditional_wordlist, id: "chinese-traditional" },
-    { name: "Czech", list: czech_wordlist, id: "czech" },
-    { name: "French", list: french_wordlist, id: "french" },
-    { name: "Italian", list: italian_wordlist, id: "italian" },
-    { name: "Japanese", list: japanese_wordlist, id: "japanese" },
-    { name: "Korean", list: korean_wordlist, id: "korean" },
-    { name: "Portuguese", list: portuguese_wordlist, id: "portuguese" },
-    { name: "Spanish", list: spanish_wordlist, id: "spanish" }
-  ];
-
-  // Generate complete mnemonic phrase for a given language
-  const generateMnemonicPhrase = (wordlist: string[]): string => {
-    return lineSums.map(sum => wordlist[sum]).join(' ');
-  };
-
-  // Copy mnemonic phrase to clipboard
-  const copyPhraseToClipboard = (language: string) => {
-    const wordlist = wordlistMap.find(wl => wl.id === language)?.list;
-    if (!wordlist) return;
-    
-    const phrase = generateMnemonicPhrase(wordlist);
-    navigator.clipboard.writeText(phrase);
-    setCopiedPhrase(language);
-    toast.success(`Copied ${language} mnemonic phrase to clipboard!`);
-    
-    // Reset the copied state after 2 seconds
-    setTimeout(() => {
-      setCopiedPhrase(null);
-    }, 2000);
-  };
+  const [indexes, setIndexes] = useState<number[]>([0]);
+  const [words, setWords] = useState<string[]>([""]);
+  const [isResetting, setIsResetting] = useState(false);
+  const [activeWordIndex, setActiveWordIndex] = useState(0);
+  // Add a new state for selected language
+  const [selectedLanguage, setSelectedLanguage] = useState("english");
 
   const githubRepoUrl = "https://github.com/evan1ee/bip39-word-finder";
 
+  // Memoize wordlists based on indexes to avoid recalculation on every render
+  const wordlists = useMemo(() => {
+    const wordsForIndexes = Array.isArray(getWordsFromIndex(indexes))
+      ? getWordsFromIndex(indexes) as any[]
+      : [getWordsFromIndex(indexes)];
+
+    return wordsForIndexes.map((wordsResult) => [
+      { id: "english", name: "English", word: wordsResult.english },
+      { id: "chinese_simplified", name: "Chinese (Simplified)", word: wordsResult.chinese_simplified },
+      { id: "chinese_traditional", name: "Chinese (Traditional)", word: wordsResult.chinese_traditional },
+      { id: "czech", name: "Czech", word: wordsResult.czech },
+      { id: "french", name: "French", word: wordsResult.french },
+      { id: "italian", name: "Italian", word: wordsResult.italian },
+      { id: "japanese", name: "Japanese", word: wordsResult.japanese },
+      { id: "korean", name: "Korean", word: wordsResult.korean },
+      { id: "portuguese", name: "Portuguese", word: wordsResult.portuguese },
+      { id: "spanish", name: "Spanish", word: wordsResult.spanish },
+    ]);
+  }, [indexes]);
+
+  // Sync words with indexes when they change
+  useEffect(() => {
+    setWords(indexes.map((_, i) => wordlists[i]?.find(w => w.id === selectedLanguage)?.word || ""));
+  }, [indexes, wordlists, selectedLanguage]);
+
+  // Handle binary input change with index clamping (0-2047 for BIP39)
+  const handleBinaryChange = (newValue: string) => {
+    let newIndex = parseInt(newValue, 2);
+    newIndex = Math.max(0, Math.min(2047, newIndex)); // Clamp index to valid range
+    const newIndexes = [...indexes];
+    newIndexes[activeWordIndex] = newIndex;
+    setIndexes(newIndexes);
+  };
+
+  // Reset to default state
+  const resetToDefault = () => {
+    setIsResetting(true);
+    setIndexes([0]);
+    setWords([""]);
+    setActiveWordIndex(0);
+    setSelectedLanguage("english");
+    setTimeout(() => {
+      setIsResetting(false);
+      toast.success("Reset to default values");
+    }, 300);
+  };
+
+  // Copy text to clipboard with toast notification
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.dismiss();
+    toast.success(`"${text}" copied to clipboard!`);
+  };
+
+  // Add a new word slot (up to 12)
+  const addWordSlot = () => {
+    if (indexes.length < 12) {
+      setIndexes([...indexes, 0]);
+      setWords([...words, ""]);
+      setActiveWordIndex(indexes.length);
+      toast.success(`Added word slot #${indexes.length + 1}`);
+    }
+  };
+
+  // Remove the last word slot (minimum 1)
+  const removeWordSlot = () => {
+    if (indexes.length > 1) {
+      setIndexes(indexes.slice(0, -1));
+      setWords(words.slice(0, -1));
+      setActiveWordIndex(Math.max(0, indexes.length - 2));
+      toast.success(`Removed word slot #${indexes.length}`);
+    }
+  };
+
+  // Select a word slot by index
+  const selectWordSlot = (index: number) => {
+    setActiveWordIndex(index);
+  };
+
+  // Get displayed words based on selected language
+  const getDisplayedWords = () => {
+    return indexes.map((_, i) => 
+      wordlists[i]?.find(w => w.id === selectedLanguage)?.word || ''
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 lg:px-8 flex flex-col">
-      <Toaster position="top-right" />
-      
-      <div className="max-w-5xl mx-auto w-full bg-white rounded-2xl shadow-xl overflow-hidden flex-grow">
-        <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-white">BIP39 Word Finder</h1>
-              <p className="text-indigo-100 mt-2 max-w-2xl">The BIP39 mnemonic list contains 2048 words, each corresponding to a value from 0 to 2047. These values can be represented using 11 checkboxes for binary selection to determine the matching BIP39 word.</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Toaster position="top-center" />
+      <main className="flex-grow py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Card */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex flex-col gap-3 md:w-3/4">
+                <h1 className="text-2xl md:text-3xl font-bold text-white">BIP39 Word Finder</h1>
+                <p className="text-white/80 text-sm md:text-base max-w-3xl">
+                  The BIP39 mnemonic list contains 2048 words (0-2047), each with an 11-bit binary representation.
+                  Find words by index or search by word across multiple languages.
+                </p>
+              </div>
+              <div className="md:w-1/4 flex md:justify-end">
+                <a
+                  href={githubRepoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium"
+                >
+                  <Github className="h-4 w-4" />
+                  GitHub
+                </a>
+              </div>
             </div>
-            
-            <a
-              href={githubRepoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-            >
-              <Github className="h-4 w-4" />
-              GitHub
-            </a>
           </div>
-        </div>
-        
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div className="relative">
-              <button 
-                className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-              >
-                <Info className="h-4 w-4 mr-1" /> How it works
-              </button>
-              {showTooltip && (
-                <div className="absolute z-10 mt-2 p-4 bg-white rounded-lg shadow-lg border border-slate-200 w-72 text-sm text-slate-700">
-                  Each row represents one word in your mnemonic. Select checkboxes to add their binary values for each word (0-2047 in the BIP39 wordlist).
-                </div>
-              )}
-            </div>
-            
-            <button 
-              onClick={handleReset}
-              className="flex items-center gap-2 text-sm bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reset All
-            </button>
-          </div>
-          
-          <div className="grid gap-3">
-            {Array.from({ length: 12 }).map((_, lineIndex) => (
-              <div key={lineIndex} className="bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
-                <div className="flex items-center mb-3">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 font-bold text-sm mr-3">
-                    {lineIndex + 1}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Word: <span className="font-mono font-medium text-indigo-600">{calculateLineSum(lineIndex)}</span>
-                    {calculateLineSum(lineIndex) > 0 && (
-                      <span className="ml-2 text-slate-600">
-                        → {english_wordlist[calculateLineSum(lineIndex)]}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-11 gap-1 sm:gap-2">
-                  {binaryValues.map((value, bitIndex) => (
-                    <div key={`${lineIndex}-${bitIndex}`} className="flex flex-col items-center">
-                      <span className="text-xs font-mono mb-1 text-slate-500">{value}</span>
-                      <div 
-                        onClick={() => handleCheckboxChange(lineIndex, bitIndex)}
-                        className={`p-2 rounded-md cursor-pointer transition-all ${
-                          selectedValues[`${lineIndex}-${bitIndex}`] 
-                            ? 'bg-indigo-100 border border-indigo-300' 
-                            : 'bg-white border border-slate-200 hover:border-indigo-200'
-                        }`}
-                      >
-                        <Checkbox 
-                          id={`checkbox-${lineIndex}-${bitIndex}`} 
-                          checked={selectedValues[`${lineIndex}-${bitIndex}`]} 
-                          onCheckedChange={() => handleCheckboxChange(lineIndex, bitIndex)}
-                          className="h-4 w-4 data-[state=checked]:bg-indigo-600"
-                        />
-                      </div>
-                    </div>
-                  ))}
+
+          {/* Word Slot Navigation */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-4">
+            <div className="flex flex-col space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-md font-semibold text-gray-500">
+                  BIP39 Seed Words ({indexes.length}/12)
+                </h2>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={removeWordSlot}
+                    disabled={indexes.length <= 1}
+                    className={`flex items-center p-2 rounded-full ${
+                      indexes.length <= 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                    aria-label="Remove word slot"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={addWordSlot}
+                    disabled={indexes.length >= 12}
+                    className={`flex items-center p-2 rounded-full ${
+                      indexes.length >= 12
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-green-50 text-green-600 hover:bg-green-100'
+                    }`}
+                    aria-label="Add word slot"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    onClick={resetToDefault}
+                    disabled={isResetting}
+                    className={`flex items-center p-2 rounded-full ${
+                      isResetting
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                    }`}
+                    aria-label="Reset to default values"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isResetting ? 'animate-spin' : ''}`} />
+                  
+                  </button>
+                
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="mt-10 bg-gradient-to-r from-slate-50 to-indigo-50 p-6 rounded-xl border border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4 flex items-center">
-              <span className="mr-2">Complete Mnemonic Phrase</span>
-              {!hasAnySelection && (
-                <span className="text-xs font-normal text-slate-500 bg-white px-2 py-1 rounded-md">
-                  Select checkboxes above to generate
-                </span>
-              )}
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {wordlistMap.map((wordlist) => (
-                <div 
-                  key={wordlist.id} 
-                  className={`p-4 bg-white border rounded-lg transition-all ${
-                    hasAnySelection 
-                      ? 'border-indigo-200 shadow-sm hover:shadow-md' 
-                      : 'border-slate-200 opacity-75'
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium text-slate-600">{wordlist.name}</h3>
-                    <button
-                      onClick={() => hasAnySelection && copyPhraseToClipboard(wordlist.id)}
-                      className={`focus:outline-none ${
-                        hasAnySelection 
-                          ? 'text-slate-400 hover:text-indigo-600' 
-                          : 'text-slate-300 cursor-not-allowed'
-                      }`}
-                      aria-label={`Copy ${wordlist.name} mnemonic phrase`}
-                      disabled={!hasAnySelection}
-                    >
-                      {copiedPhrase === wordlist.id ? (
-                        <Check className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  <div 
-                    className={`mt-3 p-2 rounded-md font-mono text-sm ${
-                      hasAnySelection 
-                        ? 'bg-slate-50 cursor-pointer hover:bg-indigo-50 transition-colors' 
-                        : 'bg-slate-50'
-                    }`}
-                    onClick={() => hasAnySelection && copyPhraseToClipboard(wordlist.id)}
+              <div className="flex flex-wrap gap-2 justify-center">
+                {Array.from({ length: 12 }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => idx < indexes.length && selectWordSlot(idx)}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
+                      idx < indexes.length
+                        ? idx === activeWordIndex
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    } transition-all duration-200`}
+                    disabled={idx >= indexes.length}
                   >
-                    <p className="break-words leading-relaxed">
-                      {hasAnySelection 
-                        ? generateMnemonicPhrase(wordlist.list)
-                        : "Select checkboxes to generate phrase"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Binary Input Section */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div className="space-y-8">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm uppercase tracking-wider text-gray-500 font-semibold flex items-center">
+                    <Binary className="h-4 w-4 mr-2" />
+                    Binary Position (Index: {indexes[activeWordIndex]})
+                  </h2>
+                
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <BinaryInput
+                    value={indexes[activeWordIndex].toString(2).padStart(11, '0')}
+                    onChange={handleBinaryChange}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mnemonic Phrase Summary Section */}
+          {indexes.length > 1 && (
+            <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="border-b border-gray-200 p-6">
+                <h2 className="text-xl font-semibold text-gray-500">Your Full BIP39 Mnemonic Phrase</h2>
+                <p className="text-sm text-gray-500 mt-1">Your complete seed phrase across all selected words.</p>
+              </div>
+              <div className="p-6">
+                <div className="mb-4 border-b border-gray-200">
+                  <div className="flex overflow-x-auto space-x-4 p-1">
+                    {wordlists[0].map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => setSelectedLanguage(lang.id)}
+                        className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                          selectedLanguage === lang.id 
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`}
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="flex flex-wrap gap-2">
+                    {getDisplayedWords().map((word, i) => (
+                      <div
+                        key={i}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium ${
+                          i === activeWordIndex
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-blue-50 text-blue-700'
+                        }`}
+                        onClick={() => selectWordSlot(i)}
+                      >
+                        <span className="text-xs opacity-75 mr-1">{i + 1}.</span> {word}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      const phrase = getDisplayedWords().join(' ');
+                      copyToClipboard(phrase);
+                    }}
+                    className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy Full Phrase
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
 
       {/* Footer */}
-      <footer className="mt-8 text-center py-6 text-slate-500 text-sm">
-        <p>BIP39 Word Finder • Make sure to secure your mnemonic phrases</p>
+      <footer className="mt-auto py-6 border-t border-gray-200 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          <p className="text-sm text-gray-500">BIP39 Word Finder © {new Date().getFullYear()}</p>
+          <a
+            href={githubRepoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors text-sm"
+            aria-label="View source code on GitHub"
+          >
+            <Github className="h-4 w-4" />
+            <span>View on GitHub</span>
+          </a>
+        </div>
       </footer>
     </div>
   );
