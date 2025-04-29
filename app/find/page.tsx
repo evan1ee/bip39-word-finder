@@ -17,8 +17,6 @@ import korean_wordlist from "@/lib/wordlist/korean";
 import portuguese_wordlist from "@/lib/wordlist/portuguese";
 import spanish_wordlist from "@/lib/wordlist/spanish";
 
-import { BinaryDisplay } from "@/components/binaryButton";
-import { BinaryInput } from "@/components/binaryButton";
 
 interface SelectedValues {
   [key: number]: boolean;
@@ -163,7 +161,6 @@ export default function Home() {
         </div>
       </div>
 
-      <BinaryInput value={sum.toString(2)} onChange={(newValue) => console.log(newValue)} />
 
       {/* Footer with GitHub link */}
       <footer className="mt-12 text-center py-6 text-gray-500 text-sm">
