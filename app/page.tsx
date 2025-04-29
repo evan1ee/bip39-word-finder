@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Check, Copy, Github } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 
+
 import chinese_simplified_wordlist from "@/lib/wordlist/chinese_simplified";
 import chinese_traditional_wordlist from "@/lib/wordlist/chinese_traditional";
 import czech_wordlist from "@/lib/wordlist/czech";
@@ -98,6 +99,8 @@ export default function Home() {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
           <h1 className="text-2xl font-bold text-white">BIP39 Word Finder</h1>
           <p className="text-white/80 mt-2">The BIP39 mnemonic list contains 2048 words, each corresponding to a value from 0 to 2047. These values can be represented using 11 checkboxes for binary selection to determine the matching BIP39 word.</p>
+          
+          
         </div>
         
         <div className="p-6">          
@@ -159,6 +162,16 @@ export default function Home() {
 
       {/* Footer with GitHub link */}
       <footer className="mt-12 text-center py-6 text-gray-500 text-sm">
+
+         {/* <Link href="/12-words" >
+            12-Word Seed
+          </Link>
+          
+          <Link href="/24-words" className="ml-4 mb-40">
+            24-Word Seed
+          </Link> */}
+
+
         <a
           href={githubRepoUrl}
           target="_blank"
