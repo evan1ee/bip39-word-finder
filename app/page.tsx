@@ -145,9 +145,9 @@ export default function Home() {
                   BIP39 Word Finder
                 </h1>
                 <p className="text-white/80 text-xs sm:text-sm md:text-base max-w-3xl">
-                  The BIP39 mnemonic list contains 2048 words (0-2047), each
-                  with an 11-bit binary representation. Find words by index or
-                  search by word across multiple languages.
+
+                A tool to explore BIP39 mnemonic words by index or search for their binary positions. Convert between binary indices (0-2047) and words across multiple languages, ideal for cryptocurrency wallet seed phrase recovery or verification.
+
                 </p>
               </div>
               <div className="md:w-1/4 flex md:justify-end">
