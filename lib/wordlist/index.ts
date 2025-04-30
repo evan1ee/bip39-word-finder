@@ -10,7 +10,7 @@ import portuguese_wordlist from "./portuguese";
 import spanish_wordlist from "./spanish";
 
 // --- Types ---
-type WordlistLanguage =
+export type WordlistLanguage =
   | 'english'
   | 'chinese_simplified'
   | 'chinese_traditional'
@@ -22,13 +22,13 @@ type WordlistLanguage =
   | 'portuguese'
   | 'spanish';
 
-type WordList = string[];
+export type WordList = string[];
 
-type WordlistsMap = Record<WordlistLanguage, WordList>;
+export type WordlistsMap = Record<WordlistLanguage, WordList>;
 
-type WordsResult = Record<WordlistLanguage, string>;
+export type WordsResult = Record<WordlistLanguage, string>;
 
-type WordSearchResult = {
+export type WordSearchResult = {
   language: WordlistLanguage;
   index: number;
 } | null;
