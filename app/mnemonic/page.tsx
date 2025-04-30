@@ -178,43 +178,39 @@ export default function Home() {
           <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 mb-4">
             <div className="flex flex-col space-y-4">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-
-                <div className= "flex items-center  space-x-3">
-
-                {/* <h2 className="text-sm sm:text-md font-semibold text-gray-500">
+                <div className="flex items-center  space-x-3">
+                  {/* <h2 className="text-sm sm:text-md font-semibold text-gray-500">
                  Seed:
                 </h2> */}
 
-                     {/* Seed Length Selection */}
-                     <div className="flex justify-start sm:justify-end">
-                      <div
-                        className="inline-flex rounded-md shadow-sm"
-                        role="group"
-                      >
-                        {[12, 15,18,21, 24].map((length) => (
-                          <button
-                            key={length}
-                            onClick={() => {
-                              // Set new max words
-                              const newMaxWords = length;
+                  {/* Seed Length Selection */}
+                  <div className="flex justify-start sm:justify-end">
+                    <div
+                      className="inline-flex rounded-md shadow-sm"
+                      role="group"
+                    >
+                      {[12, 15, 18, 21, 24].map((length) => (
+                        <button
+                          key={length}
+                          onClick={() => {
+                            // Set new max words
+                            const newMaxWords = length;
 
-                              // Adjust current indexes if needed
-                              if (indexes.length > newMaxWords) {
-                                setIndexes((prev) =>
-                                  prev.slice(0, newMaxWords)
-                                );
-                                setActiveWordIndex((prev) =>
-                                  Math.min(prev, newMaxWords - 1)
-                                );
-                                toast.success(
-                                  `Adjusted to ${newMaxWords} word phrase`
-                                );
-                              }
+                            // Adjust current indexes if needed
+                            if (indexes.length > newMaxWords) {
+                              setIndexes((prev) => prev.slice(0, newMaxWords));
+                              setActiveWordIndex((prev) =>
+                                Math.min(prev, newMaxWords - 1)
+                              );
+                              toast.success(
+                                `Adjusted to ${newMaxWords} word phrase`
+                              );
+                            }
 
-                              // Update maxWords (assuming you'll make this a state variable)
-                              setMaxWords(newMaxWords);
-                            }}
-                            className={`px-3 py-1.5 text-xs font-medium 
+                            // Update maxWords (assuming you'll make this a state variable)
+                            setMaxWords(newMaxWords);
+                          }}
+                          className={`px-3 py-1.5 text-xs font-medium 
                 ${
                   maxWords === length
                     ? "bg-blue-600 text-white"
@@ -222,21 +218,16 @@ export default function Home() {
                 } 
                 ${length === 12 ? "rounded-l-lg" : ""} 
                 ${length === 24 ? "rounded-r-lg" : ""}`}
-                          >
-                            {length}
-                          </button>
-                        ))}
-                      </div>
+                        >
+                          {length}
+                        </button>
+                      ))}
                     </div>
+                  </div>
                 </div>
-
-
-                
 
                 <div className="flex items-center">
                   <div className="flex space-x-3">
-                 
-
                     {/* Add/Remove Word Slots */}
 
                     <button
@@ -285,6 +276,8 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                  
               <div className="grid grid-cols-6 sm:grid-cols-9 md:grid-cols-12 gap-1 sm:gap-2 justify-center md:px-25">
                 {Array.from({ length: maxWords }).map((_, idx) => (
                   <button
@@ -305,6 +298,10 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+
+              </div>
+
+
             </div>
           </div>
 
@@ -318,7 +315,7 @@ export default function Home() {
                       className="h-4 w-4 mr-1 sm:mr-2"
                       aria-hidden="true"
                     />
-                    Binary Position (Index: {indexes[activeWordIndex]})
+                    Binary Position 
                   </h2>
                 </div>
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
