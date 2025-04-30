@@ -35,6 +35,7 @@ export default function Home() {
   const [inputSource, setInputSource] = useState<"binary" | "word" | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<WordlistLanguage>("english");
+  const [wordIndices, setWordIndices] = useState<number[]>([]); // Store indices for multiple words
 
   // Memoize wordlists to prevent recalculation on every render
   const wordlists = useMemo(() => {
@@ -52,6 +53,7 @@ export default function Home() {
     setWord("");
     setInputSource("binary");
     setIndex(0);
+    setWordIndices([]);
 
     setTimeout(() => {
       setIsResetting(false);
@@ -60,12 +62,12 @@ export default function Home() {
   };
 
   // Handle copying to clipboard with toast notification
-  const copyToClipboard = (word: string) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard
-      .writeText(word)
+      .writeText(text)
       .then(() => {
         toast.dismiss();
-        toast.success(`"${word}" copied to clipboard!`);
+        toast.success(`"${text}" copied to clipboard!`);
       })
       .catch((err) => {
         toast.error("Failed to copy to clipboard");
@@ -80,24 +82,55 @@ export default function Home() {
   };
 
   // Handle binary input change with index clamping (0-2047 for BIP39)
-  const handleBinaryChange = (newValue: string) => {
+  const handleBinaryChange = (newValue: string, position?: number) => {
     let newIndex = parseInt(newValue, 2);
     newIndex = Math.max(0, Math.min(MAX_INDEX, newIndex));
-    setIndex(newIndex);
+
+    if (position !== undefined && position >= 0 && position < wordIndices.length) {
+      // Update specific position in wordIndices
+      const updatedIndices = [...wordIndices];
+      updatedIndices[position] = newIndex;
+      setWordIndices(updatedIndices);
+      // Update main index if it's the first word or relevant
+      if (position === 0) {
+        setIndex(newIndex);
+      }
+    } else {
+      setIndex(newIndex);
+      // If single word, update wordIndices as well
+      if (wordIndices.length <= 1) {
+        setWordIndices([newIndex]);
+      }
+    }
     setInputSource("binary");
   };
 
-  const wordDetails = findWordDetails(word);
-  const wordIndex = wordDetails?.index;
+  // Split input into words and find details for each
+  const words = useMemo(() => word.trim().split(/\s+/).filter(Boolean), [word]);
+  const wordDetailsList = useMemo(() => {
+    return words.map(w => findWordDetails(w)).filter(Boolean);
+  }, [words]);
 
-  // Update index only if input source is 'word' and a valid word is found
+  // Update indices based on word input
   useEffect(() => {
-    if (wordIndex !== undefined && inputSource === "word") {
-      setIndex(wordIndex);
-    } else if (!word && inputSource === "word") {
-      setIndex(0);
+    if (inputSource === "word") {
+      if (wordDetailsList.length > 0) {
+        const indices = wordDetailsList.map(detail => detail!.index);
+        setWordIndices(indices);
+        setIndex(indices[0] || 0); // Set main index to first word's index
+      } else if (!word) {
+        setWordIndices([]);
+        setIndex(0);
+      }
     }
-  }, [wordIndex, word, inputSource]);
+  }, [wordDetailsList, word, inputSource]);
+
+  // Check for words not found
+  const notFoundWords = useMemo(() => {
+    if (!word) return [];
+    const foundWords = wordDetailsList.filter(d => d !== null).map(d => d?.word || "");
+    return words.filter(w => !foundWords.some(found => found.toLowerCase() === w.toLowerCase()));
+  }, [word, wordDetailsList, words]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -148,9 +181,9 @@ export default function Home() {
                     type="text"
                     value={word}
                     onChange={handleWordChange}
-                    placeholder="Enter a BIP39 word..."
+                    placeholder="Enter BIP39 word(s) separated by spaces..."
                     className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-md border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    aria-label="Enter a BIP39 word to find its index"
+                    aria-label="Enter BIP39 words to find their indices"
                   />
                   {word && (
                     <button
@@ -162,28 +195,23 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-                {wordDetails && (
+                {/* Show success message only if all words are found */}
+                {word && wordDetailsList.length === words.length && words.length > 0 && notFoundWords.length === 0 && (
                   <div className="mt-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-green-50 border border-green-100 rounded-md">
                     <p className="text-xs sm:text-sm text-green-700 flex items-center">
                       <Check
                         className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1"
                         aria-hidden="true"
                       />
-                      Found in{" "}
-                      <span className="font-medium mx-1">
-                        {wordDetails.language}
-                      </span>
-                      with index{" "}
-                      <span className="font-medium mx-1">
-                        {wordDetails.index}
-                      </span>
+                      All entered words are found in the BIP39 wordlist.
                     </p>
                   </div>
                 )}
-                {word && !wordDetails && (
+                {/* Show error message only if there are words not found */}
+                {word && notFoundWords.length > 0 && (
                   <div className="mt-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-red-50 border border-red-100 rounded-md">
                     <p className="text-xs sm:text-sm text-red-700">
-                      No matching BIP39 word found.
+                      The following word(s) are not in the BIP39 wordlist: <span className="font-medium">{notFoundWords.join(", ")}</span>
                     </p>
                   </div>
                 )}
@@ -209,115 +237,138 @@ export default function Home() {
                       className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2"
                       aria-hidden="true"
                     />
-                    Binary Position 
+                    Binary Position(s)
                   </h2>
                   <button
                     onClick={resetToDefault}
                     disabled={isResetting}
-                    className={`flex items-center px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
-                      isResetting
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                    }`}
+                    className={`flex items-center px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${isResetting
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                      }`}
                     aria-label="Reset to default values"
                   >
                     <RefreshCw
-                      className={`h-3.5 w-3.5 mr-1 ${
-                        isResetting ? "animate-spin" : ""
-                      }`}
+                      className={`h-3.5 w-3.5 mr-1 ${isResetting ? "animate-spin" : ""
+                        }`}
                       aria-hidden="true"
                     />
                     Reset
                   </button>
                 </div>
+
                 <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                  <BinaryInput
-                    value={index.toString(2).padStart(11, "0")}
-                    onChange={handleBinaryChange}
-                  />
+                  <div className="flex justify-center flex-wrap gap-6">
+                    {wordIndices.length > 1 && inputSource === "word" ? (
+                      wordIndices.map((idx, position) => (
+                        <div key={position} className="flex flex-row items-center gap-2 min-w-[180px]">
+                          <span className="flex items-center justify-center w-8 h-8 text-md font-medium text-green-600 bg-green-100 rounded-full mx-5">
+                            {position + 1}
+                          </span>
+                          <BinaryInput
+                            value={idx.toString(2).padStart(11, "0")}
+                            readOnly = {true}
+                            onChange={(value) => handleBinaryChange(value, position)}
+                          />
+
+                        </div>
+                      ))
+                    ) : (
+                      <BinaryInput
+                        value={index.toString(2).padStart(11, "0")}
+                        onChange={(value) => handleBinaryChange(value)}
+                      />
+                    )}
+                  </div>
                 </div>
+
+
+
+
+
               </div>
             </div>
           </div>
 
-          {/* Results Section */}
-          <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="border-b border-gray-200 p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-500">
-                BIP39 Words for Index: <span className="text-blue-600">{index}</span>
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                Select a language to view the corresponding word. Click to copy.
-              </p>
-            </div>
-            <div className="p-4 sm:p-6">
-              {/* Language Selection Tabs */}
-              <div className="mb-4 sm:mb-6">
-                <div
-                  role="tablist"
-                  className="flex overflow-x-auto pb-1 border-b border-gray-200 scrollbar-hide"
-                >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.id}
-                      onClick={() => setSelectedLanguage(lang.id)}
-                      role="tab"
-                      aria-selected={selectedLanguage === lang.id}
-                      aria-controls={`${lang.id}-panel`}
-                      id={`${lang.id}-tab`}
-                      tabIndex={selectedLanguage === lang.id ? 0 : -1}
-                      className={`px-2 py-1.5 sm:py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors relative min-w-[50px] ${
-                        selectedLanguage === lang.id
+          {/* Results Section - Show only when input source is binary or no word input */}
+          {inputSource !== "word" && (
+            <div className="mt-6 sm:mt-8 bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="border-b border-gray-200 p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-500">
+                  BIP39 Words for Index: <span className="text-blue-600">{index}</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Select a language to view the corresponding word. Click to copy.
+                </p>
+              </div>
+              <div className="p-4 sm:p-6">
+                {/* Language Selection Tabs */}
+                <div className="mb-4 sm:mb-6">
+                  <div
+                    role="tablist"
+                    className="flex overflow-x-auto pb-1 border-b border-gray-200 scrollbar-hide"
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => setSelectedLanguage(lang.id)}
+                        role="tab"
+                        aria-selected={selectedLanguage === lang.id}
+                        aria-controls={`${lang.id}-panel`}
+                        id={`${lang.id}-tab`}
+                        tabIndex={selectedLanguage === lang.id ? 0 : -1}
+                        className={`px-2 py-1.5 sm:py-2 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors relative min-w-[50px] ${selectedLanguage === lang.id
                           ? "text-blue-600"
                           : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {lang.name}
-                      {selectedLanguage === lang.id && (
-                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"></span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Word Display */}
-              <div
-                id={`${selectedLanguage}-panel`}
-                role="tabpanel"
-                aria-labelledby={`${selectedLanguage}-tab`}
-                className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200"
-              >
-                <div className="flex items-center justify-between">
-                  <div
-                    className="px-3 py-2 rounded-md text-sm font-medium cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    onClick={() =>
-                      copyToClipboard(
-                        wordlists.find((w) => w.id === selectedLanguage)?.word || ""
-                      )
-                    }
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Copy word for ${selectedLanguage}`}
-                  >
-                    {wordlists.find((w) => w.id === selectedLanguage)?.word || "N/A"}
+                          }`}
+                      >
+                        {lang.name}
+                        {selectedLanguage === lang.id && (
+                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600"></span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  <button
-                    onClick={() =>
-                      copyToClipboard(
-                        wordlists.find((w) => w.id === selectedLanguage)?.word || ""
-                      )
-                    }
-                    className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium"
-                    aria-label="Copy word to clipboard"
-                  >
-                    <Copy className="h-3 w-3" aria-hidden="true" />
-                    Copy
-                  </button>
+                </div>
+
+                {/* Word Display */}
+                <div
+                  id={`${selectedLanguage}-panel`}
+                  role="tabpanel"
+                  aria-labelledby={`${selectedLanguage}-tab`}
+                  className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="px-3 py-2 rounded-md text-sm font-medium cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      onClick={() =>
+                        copyToClipboard(
+                          wordlists.find((w) => w.id === selectedLanguage)?.word || ""
+                        )
+                      }
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Copy word for ${selectedLanguage}`}
+                    >
+                      {wordlists.find((w) => w.id === selectedLanguage)?.word || "N/A"}
+                    </div>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(
+                          wordlists.find((w) => w.id === selectedLanguage)?.word || ""
+                        )
+                      }
+                      className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium"
+                      aria-label="Copy word to clipboard"
+                    >
+                      <Copy className="h-3 w-3" aria-hidden="true" />
+                      Copy
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
