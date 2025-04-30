@@ -28,7 +28,7 @@ const SUPPORTED_LANGUAGES: Array<{ id: WordlistLanguage; name: string }> = [
 ];
 
 export default function Home() {
-  const [maxWords, setMaxWords] = useState(24);
+  const [maxWords, setMaxWords] = useState(12);
   const [indexes, setIndexes] = useState<number[]>([0]);
   const [isResetting, setIsResetting] = useState(false);
   const [activeWordIndex, setActiveWordIndex] = useState(0);
@@ -178,14 +178,15 @@ export default function Home() {
           <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 mb-4">
             <div className="flex flex-col space-y-4">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <h2 className="text-sm sm:text-md font-semibold text-gray-500">
-                  BIP39 Seed Words ({indexes.length}/{maxWords})
-                </h2>
 
-                <div className="flex items-center">
-                  <div className="flex space-x-3">
-                    {/* Seed Length Selection */}
-                    <div className="flex justify-start sm:justify-end">
+                <div className= "flex items-center  space-x-3">
+
+                {/* <h2 className="text-sm sm:text-md font-semibold text-gray-500">
+                 Seed:
+                </h2> */}
+
+                     {/* Seed Length Selection */}
+                     <div className="flex justify-start sm:justify-end">
                       <div
                         className="inline-flex rounded-md shadow-sm"
                         role="group"
@@ -227,6 +228,14 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
+                </div>
+
+
+                
+
+                <div className="flex items-center">
+                  <div className="flex space-x-3">
+                 
 
                     {/* Add/Remove Word Slots */}
 
