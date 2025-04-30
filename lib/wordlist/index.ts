@@ -113,3 +113,116 @@ export function findWordDetails(word: string): WordSearchResult {
   }
   return null;
 }
+
+
+
+
+// generate mnemonic function
+// This function generates a BIP-39 mnemonic phrase based on the specified entropy bits and language.
+
+// Helper function to convert a binary string to a decimal number
+function binaryToDecimal(binary: string): number {
+  return parseInt(binary, 2);
+}
+
+// Helper function to convert a byte array to a binary string
+function bytesToBinary(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(2).padStart(8, '0'))
+    .join('');
+}
+
+// Helper function to compute SHA-256 hash (using Web Crypto API)
+async function sha256(buffer: Uint8Array): Promise<Uint8Array> {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return new Uint8Array(hashBuffer);
+}
+
+// Main function to generate a BIP-39 mnemonic
+export async function generateMnemonic(
+  entropyBits: number = 128,
+  language: WordlistLanguage = 'english'
+): Promise<string> {
+  if (![128, 160, 192, 224, 256].includes(entropyBits)) {
+    throw new Error('Entropy bits must be 128, 160, 192, 224, or 256');
+  }
+
+  // Step 1: Generate random entropy
+  const entropyBytes: number = entropyBits / 8;
+  const entropy: Uint8Array = new Uint8Array(entropyBytes);
+  crypto.getRandomValues(entropy);
+
+  // Step 2: Compute checksum (first ENT/32 bits of SHA-256 hash)
+  const checksumBits: number = entropyBits / 32;
+  const hash: Uint8Array = await sha256(entropy);
+  const checksumBinary: string = bytesToBinary(hash).slice(0, checksumBits);
+
+  // Step 3: Combine entropy and checksum
+  const entropyBinary: string = bytesToBinary(entropy);
+  const combinedBinary: string = entropyBinary + checksumBinary;
+
+  // Step 4: Split into 11-bit groups
+  const groups: string[] = combinedBinary.match(/.{1,11}/g) || [];
+  const indices: number[] = groups.map(binaryToDecimal);
+
+  // Step 5: Map indices to words using the specified wordlist
+  const wordlist: WordList = wordlists[language];
+  if (!wordlist) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+  const mnemonic: string[] = indices.map((index) => wordlist[index]);
+
+  // Step 6: Return the mnemonic phrase
+  return mnemonic.join(' ');
+}
+
+
+export async function validateMnemonic(
+  mnemonic: string,
+  language: WordlistLanguage = 'english'
+): Promise<boolean> {
+  const wordlist: WordList = wordlists[language];
+  if (!wordlist) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+
+  const words = mnemonic.trim().split(/\s+/);
+
+  // Validate word count
+  if (![12, 15, 18, 21, 24].includes(words.length)) return false;
+
+  // Convert words to binary
+  const binaryString = words.map(word => {
+    const index = wordlist.indexOf(word);
+    if (index === -1) return null; // Invalid word
+    return index.toString(2).padStart(11, '0');
+  }).join('');
+
+  if (binaryString.includes('null')) return false;
+
+  const totalBits = words.length * 11;
+  const checksumBits = totalBits / 33;
+  const entropyBits = totalBits - checksumBits;
+
+  const entropyBinary = binaryString.slice(0, entropyBits);
+  const checksumBinary = binaryString.slice(entropyBits);
+
+  // Convert entropy binary to byte array
+  const entropyBytes = new Uint8Array(entropyBits / 8);
+  for (let i = 0; i < entropyBytes.length; i++) {
+    const byte = entropyBinary.slice(i * 8, (i + 1) * 8);
+    entropyBytes[i] = parseInt(byte, 2);
+  }
+
+  // Compute and compare checksum
+  const hash = await sha256(entropyBytes);
+  const hashBinary = bytesToBinary(hash);
+  const actualChecksum = hashBinary.slice(0, checksumBits);
+
+  return checksumBinary === actualChecksum;
+}
+
+
+// const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+// const isValid = await validateMnemonic(mnemonic);
+// console.log(isValid); // true
